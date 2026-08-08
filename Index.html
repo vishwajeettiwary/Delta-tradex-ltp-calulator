@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <title>COA Option Chain Analysis Engine - Phase 1</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #fff; margin: 20px; }
+        .dashboard-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .dashboard-table th, .dashboard-table td { border: 1px solid #333; padding: 8px; text-align: center; font-size: 13px; }
+        .dashboard-table th { background-color: #1e1e1e; color: #00bcd4; }
+        
+        /* Color Coding Rules */
+        .bg-green { background-color: #1b5e20 !important; color: #fff; }
+        .bg-red { background-color: #b71c1c !important; color: #fff; }
+        .bg-yellow { background-color: #f57f17 !important; color: #000; }
+        .bg-gray { background-color: #424242 !important; color: #fff; }
+        
+        .clickable { cursor: pointer; text-decoration: underline; }
+        .clickable:hover { opacity: 0.8; }
+        
+        /* Modal Popup Styling */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); }
+        .modal-content { background: #222; margin: 10% auto; padding: 20px; width: 450px; border-radius: 8px; border: 1px solid #00bcd4; }
+        .close-btn { float: right; cursor: pointer; color: #ff5252; font-weight: bold; font-size: 20px; }
+    </style>
+</head>
+<body>
+
+    <h2>📊 COA Option Chain Master Dashboard (Phase 1 Engine)</h2>
+
+    <table class="dashboard-table" id="coaTable">
+        <!-- Rows 1 to 13 dynamically rendered by JavaScript -->
+    </table>
+
+    <!-- Generic Modal for Row 2 Popup & LTP Details Popups -->
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
