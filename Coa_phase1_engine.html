@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COA Option Chain Master Dashboard - Phase 1 Engine</title>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --card-bg: #1e1e1e;
+            --border-color: #333333;
+            --text-main: #e0e0e0;
+            --accent-blue: #00bcd4;
+            --green-strong: #1b5e20;
+            --green-light: #2e7d32;
+            --red-strong: #b71c1c;
+            --yellow-wt: #f57f17;
+            --gray-subtle: #424242;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Consolas', 'Segoe UI', sans-serif; background-color: var(--bg-dark); color: var(--text-main); padding: 15px; }
+
+        /* Header Layout */
+        .header-panel { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px; }
+        .header-title h1 { font-size: 20px; color: var(--accent-blue); margin-bottom: 4px; }
+        .header-title p { font-size: 12px; color: #aaa; }
+        .spot-badge { background: #00838f; color: #fff; padding: 8px 16px; border-radius: 6px; font-weight: bold; font-size: 16px; text-align: right; }
+
+        /* Table Styling Rule 1 & Rule 2 */
+        .dashboard-container { overflow-x: auto; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: center; }
+        th, td { border: 1px solid var(--border-color); padding: 8px 4px; }
+        th { background: #181818; color: var(--accent-blue); font-weight: 600; text-transform: uppercase; }
+
+        /* Dynamic Visual Indicators (Rule 1, 3, 5) */
+        .bg-strong { background-color: var(--green-strong) !important; color: #fff; font-weight: bold; }
+        .bg-wtb { background-color: var(--red-strong) !important; color: #fff; font-weight: bold; }
+        .bg-wtt { background-color: var(--yellow-wt) !important; color: #000; font-weight: bold; }
+        .bg-gray-zone { background-color: var(--gray-subtle) !important; color: #fff; }
+        .bg-itm { background-color: #263238; }
+
+        /* Interactive Elements */
+        .clickable { cursor: pointer; transition: all 0.2s ease-in-out; text-decoration: underline; }
+        .clickable:hover { opacity: 0.8; transform: scale(1.02); }
+        .state-box { padding: 6px 12px; border-radius: 4px; display: inline-block; font-weight: bold; }
+
+        /* Row 13 Shift Tracker Styling (Rule 4) */
+        .shift-tracker-row { background-color: #151515 !important; font-weight: bold; }
+        .shift-tracker-row td { padding: 12px 6px; }
+
+        /* Modal Popup System (Rule 5 & Rule 7) */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-card { background: #222; border: 2px solid var(--accent-blue); border-radius: 10px; width: 500px; max-width: 90%; padding: 20px; box-shadow: 0px 0px 20px rgba(0, 188, 212, 0.4); color: #fff; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px; }
+        .modal-header h3 { color: var(--accent-blue); font-size: 18px; }
+        .close-btn { font-size: 24px; cursor: pointer; color: #ff5252; font-weight: bold; }
+        .modal-body { font-size: 13px; line-height: 1.6; }
+        .directive-badge { background: #333; padding: 6px 10px; border-radius: 4px; margin: 5px 0; border-left: 4px solid var(--accent-blue); }
+        .sl-alert { background: rgba(183, 28, 28, 0.2); border-left: 4px solid var(--red-strong); padding: 8px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <!-- Header Panel -->
+    <div class="header-panel">
+        <div class="header-title">
+            <h1>COA Option Chain Master Dashboard (Phase 1 Engine)</h1>
+            <p>Rules 1-8 Full Execution Engine | Dynamic Range, Shift Tracking & Entry Matrix</p>
+        </div>
+        <div class="spot-badge">
+            NIFTY SPOT: <span id="spotValue">24,114</span>
+        </div>
+    </div>
+
+    <!-- 13 Columns x 13 Rows Master Table Engine (Rule 1) -->
+    <div class="dashboard-container">
+        <table id="coaMasterTable">
+            <!-- Table Header, State Row, Option Data Rows, & Tracker Log are dynamically rendered by JS -->
+        </table>
+    </div>
+
+    <!-- Interactive Pop-up Modal System (Rule 5 & Rule 7) -->
+    <div id="masterModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modalTitle">System Directives</h3>
+                <span class="close-btn" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="modalContent">
+                <!-- Popup Content Injected Dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================================
+        // DATA MODEL & SYSTEM STATE MEMORY (Rules 1 - 8 Rules Engine)
+        // =========================================================================
+        const systemState = {
+            spotPrice: 24114,
+            supportStrike: 24000,
+            resistanceStrike: 24200,
+            activeEOS: 23982,
+            activeEOR: 24218,
+            previousScenario: "Scenario 1: Support Strong + Resistance Strong",
+            currentScenarioId: 3, // Rule 5: Scenario 3 (Support Strong + Resistance WTT)
+            scenarios: {
+                1: { name: "Support Strong + Resistance Strong", state: "Range-Bound / Consolidating", ceAction: "Safe Buy @ EOS (23982) | Risky @ EOD", peAction: "Safe Buy @ EOR (24218) | Risky @ EOD", exit: "Reversal at Opposing Boundary" },
+                2: { name: "Support Strong + Resistance WTB", state: "Bearish Bias (Pressure from Top)", ceAction: "AVOID CALL BUYING", peAction: "Safe Buy @ EOR | Early Entry @ Top Divergence", exit: "Next Divergence from Support" },
+                3: { name: "Support Strong + Resistance WTT", state: "Bullish Bias (Upward Expansion)", ceAction: "Safe Buy @ EOS (23982) | Risky @ EOD", peAction: "AVOID PUT BUYING", exit: "1 Divergence Prior to Target WTT Strike" },
+                4: { name: "Support WTB + Resistance Strong", state: "Bearish Bias (Downward Fall Hazard)", ceAction: "AVOID CALL BUYING", peAction: "Safe Buy @ EOR | Risky @ EOD", exit: "1 Divergence Next Below Support" },
+                5: { name: "Support WTT + Resistance Strong", state: "Bullish Bias (Support Creeping UP)", ceAction: "Safe Buy @ EOS | Risky @ EOD", peAction: "AVOID PUT BUYING", exit: "1 Divergence Next Above Resistance" },
+                6: { name: "Support WTB + Resistance WTB", state: "🩸 Severe Bearish (Blood Bath)", ceAction: "STRICTLY BANNED 🚫", peAction: "Absolute Safe Buy @ EOR / Aggressive @ EOD", exit: "No Fixed Bottom - Trailing SL" },
+                7: { name: "Support WTT + Resistance WTT", state: "🚀 Severe Bullish (Bull Run)", ceAction: "Absolute Safe Buy @ EOS / Aggressive @ EOD", peAction: "STRICTLY BANNED 🚫", exit: "No Fixed Top - Trailing SL" },
+                8: { name: "Support WTT + Resistance WTB", state: "Neutral / Conflicting (COA 2.0)", ceAction: "Wait for OI Shift Confirmation", peAction: "Wait for OI Shift Confirmation", exit: "Scalp Only" },
+                9: { name: "Support WTB + Resistance WTT", state: "Neutral / Conflicting (COA 2.0)", ceAction: "Wait for Speed Analysis", peAction: "Wait for Speed Analysis", exit: "Scalp Only" }
+            },
+            // Rule 4: 60-Minute Absorption / Shifting Memory
+            shiftLogCall: { state: "Weak Towards Top (WTT to 24250)", startTime: "09:45 AM", timerMinutes: 42, status: "Absorbing (Unconfirmed)" },
+            shiftLogPut: { state: "Static / Solidified", startTime: "09:15 AM", timerMinutes: 60, status: "Confirmed Strong" }
+        };
+
+        // Standard Strike Matrix (Rule 1: 9 Intermediate/Core Strikes)
+        const strikesData = [
+            { strike: 24300, ceOI: 65000, ceVol: 120000, ceLTP: 18.20, ceState: "Normal", peOI: 5000, peVol: 12000, peLTP: 195.40, peState: "Normal" },
+            { strike: 24250, ceOI: 82000, ceVol: 190000, ceLTP: 32.50, ceState: "WTT Zone", peOI: 12000, peVol: 25000, peLTP: 158.10, peState: "Normal" },
+            { strike: 24200, ceOI: 110000, ceVol: 280000, ceLTP: 54.00, ceState: "STRONG RES", peOI: 25000, peVol: 60000, peLTP: 128.50, peState: "Normal" },
+            { strike: 24150, ceOI: 45000, ceVol: 110000, ceLTP: 82.10, ceState: "Normal", peOI: 42000, peVol: 95000, peLTP: 102.30, peState: "Normal" },
+            { strike: 24100, ceOI: 30000, ceVol: 85000, ceLTP: 115.40, ceState: "Normal", peOI: 55000, peVol: 130000, peLTP: 81.00, peState: "Normal" },
+            { strike: 24050, ceOI: 18000, ceVol: 45000, ceLTP: 152.00, ceState: "Normal", peOI: 78000, peVol: 175000, peLTP: 62.50, peState: "Normal" },
+            { strike: 24000, ceOI: 12000, ceVol: 30000, ceLTP: 192.50, ceState: "Normal", peOI: 135000, peVol: 310000, peLTP: 45.20, peState: "STRONG SUP" },
+            { strike: 23950, ceOI: 5000, ceVol: 10000, ceLTP: 238.00, ceState: "Normal", peOI: 62000, peVol: 140000, peLTP: 31.10, peState: "Normal" },
+            { strike: 23900, ceOI: 2000, ceVol: 4000, ceLTP: 285.00, ceState: "Normal", peOI: 41000, peVol: 90000, peLTP: 21.00, peState: "Normal" }
+        ];
+
+        // =========================================================================
+        // DASHBOARD RENDER ENGINE
+        // =========================================================================
+        function initDashboard() {
+            const table = document.getElementById("coaMasterTable");
+            table.innerHTML = "";
+
+            // --- Row 1: Header (13 Columns Matrix) ---
+            let headerHTML = `
+                <thead>
+                    <tr>
+                        <th colspan="6">CALL SIDE (RESISTANCE ANALYSIS)</th>
+                        <th style="background:#00838f; color:#fff;">STRIKE</th>
+                        <th colspan="6">PUT SIDE (SUPPORT ANALYSIS)</th>
+                    </tr>
+                    <tr>
+                        <th>OI</th><th>Volume</th><th>LTP</th><th>EOS/EOR/Div</th><th>State</th><th>Trade Directive</th>
+                        <th style="background:#222; color:var(--accent-blue)">SPOT: ${systemState.spotPrice}</th>
+                        <th>Trade Directive</th><th>State</th><th>EOS/EOR/Div</th><th>LTP</th><th>Volume</th><th>OI</th>
+                    </tr>
+                </thead>
+            `;
+
+            // --- Row 2: Col 7 Market State Pop-up Box (Rule 1 & Rule 5) ---
+            const activeScen = systemState.scenarios[systemState.currentScenarioId];
+            let row2HTML = `
+                <tr style="background:#1f1f1f;">
+                    <td colspan="6" style="color:#aaa;">Call Tracking Zone</td>
+                    <td class="clickable" onclick="openMarketStateModal()" style="padding:10px; background:#00695c;">
+                        <div class="state-box">
+                            📌 MARKET STATE: ${activeScen.state.toUpperCase()}<br>
+                            <small style="font-weight:normal; text-decoration:underline;">(Click for Rule 5 Pop-up Details)</small>
+                        </div>
+                    </td>
+                    <td colspan="6" style="color:#aaa;">Put Tracking Zone</td>
+                </tr>
+            `;
+
+            // --- Rows 3 to 11: Option Chain Core Rows ---
+            let bodyHTML = "<tbody>" + row2HTML;
+
+            strikesData.forEach(row => {
+                const isITMCall = row.strike < systemState.spotPrice;
+                const isITMPut = row.strike > systemState.spotPrice;
+                const isSupportStrike = row.strike === systemState.supportStrike;
+                const isResistanceStrike = row.strike === systemState.resistanceStrike;
+
+                // Rule 6: Inter-Strike Divergence Values Logic
+                let callDivValue = (row.strike === systemState.resistanceStrike) ? `EOR (${systemState.activeEOR})` : `Div (${row.strike + 18})`;
+                let putDivValue = (row.strike === systemState.supportStrike) ? `EOS (${systemState.activeEOS})` : `Div (${row.strike - 18})`;
+
+                // Cell Dynamic Styles
+                let callStateClass = isResistanceStrike ? 'bg-strong' : (row.strike === 24250 ? 'bg-wtt' : '');
+                let putStateClass = isSupportStrike ? 'bg-strong' : '';
+
+                bodyHTML += `
+                    <tr>
+                        <!-- CALL SIDE -->
+                        <td class="${isITMCall ? 'bg-itm' : ''}">${row.ceOI.toLocaleString()}</td>
+                        <td class="${isITMCall ? 'bg-itm' : ''}">${row.ceVol.toLocaleString()}</td>
+                        <td class="${isITMCall ? 'bg-itm' : ''} clickable" onclick="openLTPModal('CALL', ${row.strike}, ${row.ceLTP})">
+                            <strong>₹${row.ceLTP.toFixed(2)}</strong>
+                        </td>
+                        <td class="${isITMCall ? 'bg-itm' : ''}">${callDivValue}</td>
+                        <td class="${callStateClass}">${row.ceState}</td>
+                        <td class="${isITMCall ? 'bg-itm' : ''}">${isResistanceStrike ? 'Safe Sell Zone' : '-'}</td>
+
+                        <!-- STRIKE (COL 7) -->
+                        <td style="font-weight:bold; background:#282828; color:var(--accent-blue);">${row.strike}</td>
+
+                        <!-- PUT SIDE -->
+                        <td class="${isITMPut ? 'bg-itm' : ''}">${isSupportStrike ? 'Safe CE Buy Zone' : '-'}</td>
+                        <td class="${putStateClass}">${row.peState}</td>
+                        <td class="${isITMPut ? 'bg-itm' : ''}">${putDivValue}</td>
+                        <td class="${isITMPut ? 'bg-itm' : ''} clickable" onclick="openLTPModal('PUT', ${row.strike}, ${row.peLTP})">
+                            <strong>₹${row.peLTP.toFixed(2)}</strong>
+                        </td>
+                        <td class="${isITMPut ? 'bg-itm' : ''}">${row.peVol.toLocaleString()}</td>
+                        <td class="${isITMPut ? 'bg-itm' : ''}">${row.peOI.toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+
+            // --- Row 13: Shift Tracker Log Box (Rule 4) ---
+            let row13HTML = `
+                <tr class="shift-tracker-row">
+                    <td colspan="6" style="border-right: 2px solid var(--accent-blue);">
+                        📊 <strong>CALL SHIFT TRACKER (Rule 4):</strong> 
+                        <span style="color:var(--yellow-wt);">${systemState.shiftLogCall.state}</span> | 
+                        Timer: <strong>${systemState.shiftLogCall.timerMinutes} Mins</strong> (${systemState.shiftLogCall.status})
+                    </td>
+                    <td style="background:#000; color:var(--accent-blue);">ROW 13 LOG</td>
+                    <td colspan="6">
+                        📊 <strong>PUT SHIFT TRACKER (Rule 4):</strong> 
+                        <span style="color:#81c784;">${systemState.shiftLogPut.state}</span> | 
+                        Timer: <strong>${systemState.shiftLogPut.timerMinutes} Mins</strong> (${systemState.shiftLogPut.status})
+                    </td>
+                </tr>
+            </tbody>`;
+
+            table.innerHTML = headerHTML + bodyHTML + row13HTML;
+        }
+
+        // =========================================================================
+        // POP-UP INTERACTION ENGINE (Rules 5 & 7)
+        // =========================================================================
+
+        // Rule 5: Col 7 Row 2 Market State Pop-up
+        function openMarketStateModal() {
+            const scen = systemState.scenarios[systemState.currentScenarioId];
+            document.getElementById("modalTitle").innerText = `🏛️ Rule 5: COA Scenario Analysis`;
+            
+            let content = `
+                <div class="directive-badge">
+                    <strong>Previous Market State:</strong> ${systemState.previousScenario}
+                </div>
+                <div class="directive-badge" style="border-left-color: var(--yellow-wt);">
+                    <strong>Current Active Scenario:</strong> Scenario ${systemState.currentScenarioId} - ${scen.name}
+                </div>
+                <hr style="border-color:var(--border-color); margin: 12px 0;">
+                <h4 style="color:var(--accent-blue);">🎯 Trade Execution Directives:</h4>
+                <p style="margin-top:6px;">• <strong>Call (CE) Action:</strong> ${scen.ceAction}</p>
+                <p style="margin-top:4px;">• <strong>Put (PE) Action:</strong> ${scen.peAction}</p>
+                <p style="margin-top:4px;">• <strong>Target Exit Point:</strong> ${scen.exit}</p>
+                <hr style="border-color:var(--border-color); margin: 12px 0;">
+                <p style="font-size:11px; color:#aaa;">
+                    <strong>Expected Day Range (Rule 6):</strong> Active EOS [${systemState.activeEOS}] to Active EOR [${systemState.activeEOR}]
+                </p>
+            `;
+            
+            document.getElementById("modalContent").innerHTML = content;
+            document.getElementById("masterModal").style.display = "flex";
+        }
+
+        // Rule 7: Strike-wise Option LTP Click Pop-up
+        function openLTPModal(type, strike, ltp) {
+            document.getElementById("modalTitle").innerText = `📌 ${type} Option Details - Strike ${strike}`;
+            
+            let isCE = type === 'CALL';
+            let targetDivergence = isCE ? strike - 18 : strike + 18;
+            let stopLossLevel = isCE ? strike - 68 : strike + 68; // Rule 7: 1 Divergence Below / Away
+            let entryAdvice = isCE ? "Safe Entry near End of Support (EOS) / EOD" : "Safe Entry near End of Resistance (EOR) / EOD";
+
+            let content = `
+                <p><strong>Current Option Premium (LTP):</strong> <span style="font-size:16px; color:var(--accent-blue);">₹${ltp.toFixed(2)}</span></p>
+                <div class="directive-badge" style="margin-top:10px;">
+                    <strong>Entry Directive:</strong> ${entryAdvice}
+                </div>
+                <p style="margin-top:8px;">• <strong>Target Index Level:</strong> ${targetDivergence} Divergence Zone</p>
+                
+                <div class="sl-alert">
+                    🛑 <strong>Rule 7 Stop Loss Theorem:</strong><br>
+                    Set SL exactly 1 Divergence away at <strong>${stopLossLevel} Zone</strong>. Do not hold if the price breaks this reversal point.
+                </div>
+            `;
+
+            document.getElementById("modalContent").innerHTML = content;
+            document.getElementById("masterModal").style.display = "flex";
+        }
+
+        function closeModal() {
+            document.getElementById("masterModal").style.display = "none";
+        }
+
+        // Initialize Master System Engine on Page Load
+        window.onload = initDashboard;
+    </script>
+</body>
+</html>
