@@ -1,3 +1,5 @@
+fastapi
+uvicorn
 fyers-apiv3
 supabase
 requests
