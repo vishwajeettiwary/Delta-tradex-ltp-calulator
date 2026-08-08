@@ -2,54 +2,56 @@ import os
 import time
 import threading
 import datetime
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-from supabase import create_client, Client
-from fyers_apiv3 import fyersModel
 
-# 1. Render इसी 'app' को ढूंढ रहा है (जो पहले missing था)
-app = FastAPI(title="COA Option Chain Master Dashboard Engine")
+app = FastAPI(title="COA Option Chain Master Dashboard")
 
-# --- 2. SUPABASE CONNECTION ---
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+# --- 1. केस-इन्सेन्सिटिव फ़ाइल सर्च इंजन ---
+# यह फ़ंक्शन Capital/Small अक्षर का फ़र्क मिटाकर आपके GitHub की सही फ़ाइल ढूँढ निकालेगा
+def get_exact_filepath(requested_filename: str):
+    if os.path.exists(requested_filename):
+        return requested_filename
+    
+    # पूरे फ़ोल्डर में खोजें (Case-insensitive check)
+    current_files = os.listdir(".")
+    for file in current_files:
+        if file.lower() == requested_filename.lower():
+            return file
+    return None
 
-if SUPABASE_URL and SUPABASE_KEY:
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-else:
-    supabase = None
-
-# --- 3. FYERS CREDENTIALS ---
-CLIENT_ID = os.environ.get("FYERS_CLIENT_ID", "J635Z4448N-100")
-SECRET_KEY = os.environ.get("FYERS_SECRET_KEY", "2TYPBHLC7X")
-REDIRECT_URI = "https://trade.fyers.in/api-other/modal/login-acknowledgement"
-ACCESS_TOKEN = os.environ.get("FYERS_ACCESS_TOKEN", "")
-
-# --- 4. BACKGROUND ENGINE LOOP ---
+# --- 2. बैकग्राउंड डेटा इंजन ---
 def run_option_chain_engine():
-    """बैकग्राउंड में डाटा फैच करने वाला लूप"""
-    print(f"[{datetime.datetime.now()}] 🚀 COA Engine Started in Background...")
+    print(f"[{datetime.datetime.now()}] 🚀 COA Engine Loop Running...")
     while True:
         try:
-            # आपका Fyers / Supabase Fetching Logic यहाँ चलेगा
             pass
         except Exception as err:
-            print(f"Error in engine loop: {err}")
+            print(f"Engine Loop Warning: {err}")
         time.sleep(2)
 
-# सर्वर स्टार्ट होते ही बैकग्राउंड Engine शुरू हो जाएगा
 @app.on_event("startup")
 def start_background_loop():
     thread = threading.Thread(target=run_option_chain_engine, daemon=True)
     thread.start()
 
-# --- 5. SERVE ORIGINAL INDEX.HTML ---
+# --- 3. मेन होमपेज (Root Path '/') ---
 @app.get("/")
 def serve_homepage():
-    # आपकी ओरिजिनल मुख्य फ़ाइल 'Index.html' को सर्व करेगा
-    if os.path.exists("Index.html"):
-        return FileResponse("Index.html")
-    elif os.path.exists("I.Html"):
-        return FileResponse("I.Html")
-    return {"status": "COA Backend Active", "message": "HTML File Not Found!"}
+    # आपकी रिपॉजिटरी में जो भी मुख्य HTML फ़ाइल मौजूद होगी, उसे लोड कर देगा
+    for possible_name in ["index.html", "Index.Html", "Index.html", "Coa_phase1_engine.html"]:
+        exact_file = get_exact_filepath(possible_name)
+        if exact_file:
+            return FileResponse(exact_file)
+            
+    return {"error": "कोई भी HTML फ़ाइल नहीं मिली!"}
+
+# --- 4. स्मार्ट राउटर (यह आपकी हर CSS, JS और अन्य फ़ाइल को कनेक्ट करेगा) ---
+@app.get("/{file_name:path}")
+def serve_any_project_file(file_name: str):
+    exact_file = get_exact_filepath(file_name)
+    
+    if exact_file and os.path.isfile(exact_file):
+        return FileResponse(exact_file)
+    
+    return Response(status_code=404, content=f"File '{file_name}' not found in directory.")
