@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delta Trade X LTP Calculator</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --call-bg: rgba(16, 185, 129, 0.1);
+      --put-bg: rgba(239, 68, 68, 0.1);
+      --accent-blue: #3b82f6;
+      --accent-yellow: #eab308;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); padding: 10px; font-size: 12px; }
+
+    /* Top Navigation Bar */
+    .header-container { background: var(--card-bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 10px; }
+    .nav-title { font-size: 18px; font-weight: bold; color: var(--accent-blue); text-align: center; margin-bottom: 10px; }
+    
+    .top-controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+    .select-box, .mode-btn { background: #0f172a; color: var(--text-main); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 5px; font-weight: bold; }
+    .spot-price-badge { font-size: 14px; font-weight: bold; color: var(--accent-yellow); background: #0284c722; padding: 6px 12px; border-radius: 5px; border: 1px solid #0284c7; }
+    .date-time { font-size: 11px; color: var(--text-muted); }
+
+    /* Ranges & Stats */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin-bottom: 8px; text-align: center; }
+    .stat-card { background: #0f172a; padding: 6px; border-radius: 4px; border: 1px solid var(--border-color); }
+    .stat-label { font-size: 10px; color: var(--text-muted); }
+    .stat-val { font-size: 11px; font-weight: bold; margin-top: 2px; }
+
+    /* Main Option Chain Table Layout */
+    .table-container { overflow-x: auto; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color); }
+    table { width: 100%; border-collapse: collapse; text-align: center; white-space: nowrap; }
+    th, td { border: 1px solid var(--border-color); padding: 5px 4px; font-size: 11px; cursor: pointer; }
+    
+    /* Column Colors */
+    .col-call { background: var(--call-bg); }
+    .col-put { background: var(--put-bg); }
+    .col-strike { background: #0f172a; font-weight: bold; color: var(--accent-yellow); }
+    
+    /* Headers */
+    .big-header-call { background: #065f46; color: #fff; font-size: 13px; font-weight: bold; }
+    .big-header-sentiment { background: #1e40af; color: #fff; font-size: 13px; font-weight: bold; }
+    .big-header-put { background: #991b1b; color: #fff; font-size: 13px; font-weight: bold; }
+    .sub-header { background: #334155; font-size: 10px; color: var(--text-main); }
+    
+    /* Row 13 Center Spot Level Row */
+    .row-spot { background: #1e1b4b !important; font-weight: bold; border-top: 2px solid var(--accent-yellow); border-bottom: 2px solid var(--accent-yellow); }
+    .ts-text { display: block; font-size: 9px; color: var(--text-muted); font-weight: normal; }
+    
+    /* Popups Modal */
+    .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); }
+    .modal-content { background: var(--card-bg); margin: 15% auto; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; border: 1px solid var(--border-color); position: relative; }
+    .close-btn { position: absolute; right: 15px; top: 10px; font-size: 20px; cursor: pointer; color: var(--text-muted); }
+    .popup-title { font-size: 15px; font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    .popup-field { margin-bottom: 8px; font-size: 12px; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <div class="header-container">
+    <div class="nav-title">Delta Trade X LTP Calculator</div>
+    
+    <div class="top-controls">
+      <div>
+        <label style="font-size: 10px; color: var(--text-muted);">SYMBOL:</label>
+        <select class="select-box" id="symbolSelect">
+          <option value="NIFTY">NIFTY</option>
+          <option value="BANKNIFTY">BANKNIFTY</option>
+          <option value="FINNIFTY">FINNIFTY</option>
+          <option value="SENSEX">SENSEX</option>
+          <option value="BANKEX">BANKEX</option>
+          <option value="MIDCPNIFTY">MIDCAP</option>
+          <option value="CRUDEOIL">CRUDEOIL</option>
+          <option value="NATURALGAS">NATURALGAS</option>
+          <option value="GOLD">GOLD</option>
+          <option value="SILVER">SILVER</option>
+        </select>
+      </div>
+
+      <div class="spot-price-badge">
+        SPOT: <span id="spotPriceVal">24,014.50</span>
+      </div>
+
+      <div>
+        <button class="mode-btn" style="background: var(--accent-blue);">LIVE</button>
+        <button class="mode-btn">HISTORY</button>
+      </div>
+
+      <div class="date-time" id="dateTimeDisplay">07-AUG-2026 12:47:48</div>
+    </div>
+
+    <!-- Ranges -->
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">DAY RANGE</div><div class="stat-val" style="color:var(--accent-green)">23,950 - 24,150</div></div>
+      <div class="stat-card"><div class="stat-label">WEEKLY RANGE</div><div class="stat-val" style="color:var(--accent-yellow)">23,800 - 24,300</div></div>
+      <div class="stat-card"><div class="stat-label">MONTHLY RANGE</div><div class="stat-val" style="color:var(--accent-blue)">23,500 - 24,500</div></div>
+      <div class="stat-card"><div class="stat-label">MAX PAIN</div><div class="stat-val">24,000</div></div>
+      <div class="stat-card"><div class="stat-label">SYMBOL PCR</div><div class="stat-val">0.92</div></div>
+      <div class="stat-card"><div class="stat-label">POC</div><div class="stat-val">24,000</div></div>
+    </div>
+  </div>
+
+  <!-- Main Option Chain Grid System (13 Columns x 23 Rows) -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <!-- Row 1: Big Header -->
+        <tr>
+          <th colspan="6" class="big-header-call">Overall Call Side Resistance: 24,100 (STRONG) [10:15 AM]</th>
+          <th class="big-header-sentiment" id="sentimentHeader">BULLISH</th>
+          <th colspan="6" class="big-header-put">Overall Put Side Support: 24,000 (STRONG) [09:30 AM]</th>
+        </tr>
+        
+        <!-- Row 2: Sub-Headers -->
+        <tr class="sub-header">
+          <!-- Call Side (Col 1-6) -->
+          <th>DIV / TIME</th>
+          <th>IV / GREEKS</th>
+          <th>OI CHG</th>
+          <th>VOLUME</th>
+          <th>OI</th>
+          <th>LTP / DIV</th>
+          
+          <!-- Center (Col 7) -->
+          <th style="color: var(--accent-yellow);">STRIKE / PCR</th>
+          
+          <!-- Put Side (Col 8-13) -->
+          <th>LTP / DIV</th>
+          <th>OI</th>
+          <th>VOLUME</th>
+          <th>OI CHG</th>
+          <th>IV / GREEKS</th>
+          <th>DIV / TIME</th>
+        </tr>
+      </thead>
+      <tbody id="optionChainBody">
+        
+        <!-- NOTE: Rows 3 to 12 (Upper 10 Strikes) dynamically generated -->
+        <!-- Row 13: Center Spot Price Level Row -->
+        <tr class="row-spot">
+          <td class="col-call">24,100<span class="ts-text">10:05 AM</span></td>
+          <td class="col-call">14.2<span class="ts-text">Δ 0.52</span></td>
+          <td class="col-call">WTB<span class="ts-text">10:12 AM</span></td>
+          <td class="col-call">STRONG<span class="ts-text">09:15 AM</span></td>
+          <td class="col-call">WTT<span class="ts-text">09:45 AM</span></td>
+          <td class="col-call">STRONG<span class="ts-text">10:15 AM</span></td>
+          
+          <!-- Center Spot Price -->
+          <td class="col-strike" style="font-size: 13px; background: #312e81;">
+            24,014.50
+            <span class="ts-text" style="color:var(--accent-yellow)">PCR: 0.92</span>
+          </td>
+          
+          <td class="col-put">STRONG<span class="ts-text">09:30 AM</span></td>
+          <td class="col-put">STRONG<span class="ts-text">09:30 AM</span></td>
+          <td class="col-put">STRONG<span class="ts-text">09:30 AM</span></td>
+          <td class="col-put">WTT<span class="ts-text">10:00 AM</span></td>
+          <td class="col-put">SHIFT UP<span class="ts-text">10:10 AM</span></td>
+          <td class="col-put">SCENARIO 1<span class="ts-text">09:30 AM</span></td>
+        </tr>
+        <!-- Rows 14 to 23 (Lower 10 Strikes) dynamically generated -->
+
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Interactive Popup Modal -->
+  <div id="tradeModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal()">&times;</span>
+      <div class="popup-title" id="popupTitle">Trade Setup Setup Details</div>
+      <div id="popupBody">
+        <!-- Content inserted dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Demo Grid Initialization JavaScript Code
+    const body = document.getElementById('optionChainBody');
+    const spotIndex = 10; // Row 13 position
+    const spotStrike = 24000;
+    
+    let htmlContent = '';
+
+    for (let i = 0; i < 21; i++) {
+      if (i === spotIndex) continue; // Skip as Row 13 spot row is hardcoded above
+      
+      let strike = spotStrike + ((10 - i) * 50);
+      let isCallITM = strike < spotStrike;
+      let isPutITM = strike > spotStrike;
+
+      htmlContent += `
+        <tr>
+          <!-- Call Side -->
+          <td class="col-call" onclick="openPopup('Symbol Div', '${strike}')">${strike + 15}<span class="ts-text">11:15 AM</span></td>
+          <td class="col-call">13.5<span class="ts-text">Δ 0.45</span></td>
+          <td class="col-call">+12.4K</td>
+          <td class="col-call">1,45,200</td>
+          <td class="col-call">85,400</td>
+          <td class="col-call" onclick="openPopup('Call LTP', '${strike}')"><b>125.40</b><span class="ts-text">R: 140/110</span></td>
+          
+          <!-- Strike Price Center -->
+          <td class="col-strike" onclick="openPopup('Strike', '${strike}')">${strike}<span class="ts-text">PCR: 0.85</span></td>
+          
+          <!-- Put Side -->
+          <td class="col-put" onclick="openPopup('Put LTP', '${strike}')"><b>98.20</b><span class="ts-text">R: 115/80</span></td>
+          <td class="col-put">92,100</td>
+          <td class="col-put">1,62,000</td>
+          <td class="col-put">+18.2K</td>
+          <td class="col-put">14.1<span class="ts-text">Δ -0.55</span></td>
+          <td class="col-put" onclick="openPopup('Symbol Div', '${strike}')">${strike - 15}<span class="ts-text">11:30 AM</span></td>
+        </tr>
+      `;
+    }
+    
+    // Insert top/bottom strikes around Spot Row
+    body.innerHTML = htmlContent;
+
+    // Modal Popup Functions
+    function openPopup(type, strike) {
+      const modal = document.getElementById('tradeModal');
+      const title = document.getElementById('popupTitle');
+      const popupBody = document.getElementById('popupBody');
+
+      if (type === 'Strike') {
+        title.innerText = `Futures/Index Trade Card - ${strike}`;
+        popupBody.innerHTML = `
+          <div class="popup-field"><span>Bull Entry Price:</span><b>Above ${parseInt(strike) + 10}</b></div>
+          <div class="popup-field"><span>Bull Stop Loss:</span><b style="color:var(--accent-red)">${parseInt(strike) - 15}</b></div>
+          <div class="popup-field"><span>Bull Target:</span><b style="color:var(--accent-green)">${parseInt(strike) + 60}</b></div>
+          <div class="popup-field"><span>Expected Time:</span><span>11:45 AM</span></div>
+          <hr style="border-color:var(--border-color); margin:10px 0;">
+          <div class="popup-field"><span>Bear Entry Price:</span><b>Below ${parseInt(strike) - 10}</b></div>
+          <div class="popup-field"><span>Bear Stop Loss:</span><b style="color:var(--accent-red)">${parseInt(strike) + 15}</b></div>
+          <div class="popup-field"><span>Bear Target:</span><b style="color:var(--accent-green)">${parseInt(strike) - 60}</b></div>
+        `;
+      } else if (type === 'Call LTP') {
+        title.innerText = `Call Option Trade Setup - ${strike} CE`;
+        popupBody.innerHTML = `
+          <div class="popup-field"><span>Buy Entry Price:</span><b>125.40</b></div>
+          <div class="popup-field"><span>Option Stop Loss:</span><b style="color:var(--accent-red)">110.00</b></div>
+          <div class="popup-field"><span>Option Target:</span><b style="color:var(--accent-green)">155.00</b></div>
+          <div class="popup-field"><span>Expected Reversal Entry:</span><span>11:20 AM</span></div>
+          <div class="popup-field"><span>Target Exit Time:</span><span>01:15 PM</span></div>
+        `;
+      } else if (type === 'Put LTP') {
+        title.innerText = `Put Option Trade Setup - ${strike} PE`;
+        popupBody.innerHTML = `
+          <div class="popup-field"><span>Buy Entry Price:</span><b>98.20</b></div>
+          <div class="popup-field"><span>Option Stop Loss:</span><b style="color:var(--accent-red)">82.00</b></div>
+          <div class="popup-field"><span>Option Target:</span><b style="color:var(--accent-green)">128.00</b></div>
+          <div class="popup-field"><span>Expected Reversal Entry:</span><span>11:35 AM</span></div>
+          <div class="popup-field"><span>Target Exit Time:</span><span>02:00 PM</span></div>
+        `;
+      }
+      modal.style.display = 'block';
+    }
+
+    function closeModal() {
+      document.getElementById('tradeModal').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
