@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COA Option Chain Master Dashboard - Phase 1 Engine</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Outer Interface: Top Control & Stats Header Panel -->
+    <header class="top-navbar">
+        <div class="brand">
+            <h1>🚀 COA MASTER DASHBOARD</h1>
+            <span class="version-tag">Phase 1 Engine v1.0</span>
+        </div>
+        <div class="market-status-bar">
+            <div class="stat-card">
+                <span class="label">NIFTY SPOT</span>
+                <span class="value cyan" id="spotPriceVal">24,114.50</span>
+            </div>
+            <div class="stat-card">
+                <span class="label">PCR RATIO</span>
+                <span class="value green" id="pcrVal">1.18 (Bullish)</span>
+            </div>
+            <div class="stat-card">
+                <span class="label">ACTIVE DAY RANGE</span>
+                <span class="value yellow" id="dayRangeVal">23,982 - 24,218</span>
+            </div>
+            <div class="stat-card">
+                <span class="label">MARKET STATE</span>
+                <span class="value" id="topStateVal">BULLISH BIAS</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Outer Interface: Summary Banner (COA Rule 5 Active Overview) -->
+    <section class="summary-banner" id="summaryBanner">
+        <div class="banner-box">
+            <strong>🏛️ Active COA State:</strong> Scenario 3 (Support Strong + Resistance WTT)
+        </div>
+        <div class="banner-box warning">
+            <strong>⏳ Shift Absorption Timer:</strong> Call Shift Active (42 Mins / 60 Mins)
+        </div>
+    </section>
+
+    <!-- Main Container: 13x13 Dashboard Engine Table -->
+    <main class="dashboard-container">
+        <table id="coaMasterTable" class="master-table">
+            <!-- JavaScript logic automatically populates Rows 1 to 13 -->
+        </table>
+    </main>
+
+    <!-- Interactive Pop-up Modal System (For Rule 5 & Rule 7 Mechanics) -->
+    <div id="masterModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modalTitle">System Directives</h3>
+                <span class="close-btn" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="modalContent">
+                <!-- Popup Content Injected Dynamically by app.js -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
