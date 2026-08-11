@@ -1,5 +1,7 @@
-fastapi
-uvicorn
-fyers-apiv3
+google-generativeai
+openai
 supabase
+python-dotenv
 requests
+pytz
+apscheduler
